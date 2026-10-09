@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Dear Diary</title>
+<meta name="description" content="A diary you can decorate: paper, photos, washi tape, stickers and notes.">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<meta name="theme-color" content="#FFE9F1">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Bagel+Fat+One&family=Caveat&family=Patrick+Hand&family=Gaegu&display=swap">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<div id="splash" aria-hidden="true">
+  <svg class="sp-lock" viewBox="0 0 200 180" width="200" height="180">
+    <g class="sp-spark" style="transform-origin:150px 40px"><path d="M150 28C151.5 37 153 38.5 162 40 153 41.5 151.5 43 150 52 148.5 43 147 41.5 138 40 147 38.5 148.5 37 150 28Z" fill="#F7B8D0"/></g>
+    <g class="sp-spark" style="transform-origin:46px 58px;animation-delay:.12s"><path d="M46 50C47 56 48 57 54 58 48 59 47 60 46 66 45 60 44 59 38 58 44 57 45 56 46 50Z" fill="#C9B6F2"/></g>
+    <g class="sp-spark" style="transform-origin:162px 102px;animation-delay:.22s"><path d="M162 96C163 100 164 101 168 102 164 103 163 104 162 108 161 104 160 103 156 102 160 101 161 100 162 96Z" fill="#A9D8F5"/></g>
+    <path class="sp-shackle" d="M74 98V72a26 26 0 0 1 52 0v26" fill="none" stroke="#EBAEC6" stroke-width="10"/>
+    <path d="M100 166C68 146 50 128 50 106 50 91 61 82 74 82 86 82 95 88 100 95 105 88 114 82 126 82 139 82 150 91 150 106 150 128 132 146 100 166Z" fill="#EBAEC6"/>
+    <g class="sp-key"><circle cx="100" cy="118" r="7" fill="#E386A8"/><path d="M96.5 121 94 134a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l-2.5-13Z" fill="#E386A8"/></g>
+  </svg>
+  <div class="sp-word">Dear Diary</div>
+  <div class="sp-sub">your little keepsake diary</div>
+</div>
+
+<!-- ============ Library ============ -->
+<main id="library" hidden>
+  <header class="lib-head">
+    <h1 class="app-name">Dear Diary</h1>
+    <div class="lib-actions">
+      <button class="btn ghost" id="btnInstall" hidden data-icon="install">Install app</button>
+      <button class="btn ghost" id="btnDesk" data-icon="palette">Theme</button>
+      <button class="btn ghost" id="btnBackup" data-icon="download">Back up</button>
+      <button class="btn ghost" id="btnRestore" data-icon="upload">Restore</button>
+      <button class="btn primary" id="btnNewDiary" data-icon="plus">New diary</button>
+    </div>
+  </header>
+  <section class="shelf-wrap" aria-label="Your diaries">
+    <div id="shelf" class="shelf"></div>
+    <div class="shelf-plank" aria-hidden="true"></div>
+  </section>
+  <footer class="lib-foot"><span id="storageInfo"></span><span>Everything stays on this device. Back up now and then to keep a copy.</span></footer>
+</main>
+
+<!-- ============ Editor ============ -->
+<div id="editor" hidden>
+  <header id="topbar">
+    <div class="tb-left">
+      <button class="icon-btn" id="btnLibrary" title="All diaries" aria-label="All diaries" data-icon="left"></button>
+      <button class="diary-name" id="diaryName" title="Rename diary"></button>
+      <span id="saveState" class="save-state">Saved</span>
+    </div>
+    <div class="tb-right">
+      <button class="icon-btn" id="btnUndo" title="Undo (Ctrl+Z)" aria-label="Undo" data-icon="undo"></button>
+      <button class="icon-btn" id="btnRedo" title="Redo (Ctrl+Shift+Z)" aria-label="Redo" data-icon="redo"></button>
+      <button class="icon-btn" id="btnHistory" title="History" aria-label="History" data-icon="history"></button>
+      <span class="tb-sep"></span>
+      <button class="icon-btn" id="btnZoomOut" title="Zoom out" aria-label="Zoom out" data-icon="zoomOut"></button>
+      <button class="zoom-label" id="btnFit" title="Fit to screen"><span id="zoomLabel">100%</span></button>
+      <button class="icon-btn" id="btnZoomIn" title="Zoom in" aria-label="Zoom in" data-icon="zoomIn"></button>
+      <span class="tb-sep"></span>
+      <button class="icon-btn" id="btnCover" title="Edit cover" aria-label="Edit cover" data-icon="cover"></button>
+      <button class="icon-btn" id="btnExport" title="Save as image or PDF" aria-label="Save as image or PDF" data-icon="export"></button>
+      <button class="icon-btn" id="btnHelp" title="Keyboard shortcuts" aria-label="Keyboard shortcuts"><b style="font-size:15px">?</b></button>
+      <button class="icon-btn only-narrow" id="btnPanel" title="Show panel" aria-label="Show panel" data-icon="panel"></button>
+    </div>
+  </header>
+
+  <nav id="rail" aria-label="Tools">
+    <button data-tool="select" title="Select (V)" aria-label="Select" data-icon="select"></button>
+    <button data-tool="text" title="Text (T)" aria-label="Text" data-icon="text"></button>
+    <button data-tool="note" title="Sticky note (N)" aria-label="Sticky note" data-icon="note"></button>
+    <button data-tool="washi" title="Washi tape (W)" aria-label="Washi tape" data-icon="washi"></button>
+    <button data-tool="pen" title="Pen (P)" aria-label="Pen" data-icon="pen"></button>
+    <button data-tool="eraser" title="Eraser (E)" aria-label="Eraser" data-icon="eraser"></button>
+    <span class="rail-sep"></span>
+    <button id="btnImage" title="Add image (I)" aria-label="Add image" data-icon="image"></button>
+    <button data-panel="drawer" title="Ephemera Drawer" aria-label="Ephemera Drawer" data-icon="drawer"></button>
+    <button data-panel="layouts" title="Layouts" aria-label="Layouts" data-icon="layout"></button>
+  </nav>
+  <aside id="flyout" aria-label="Panel"></aside>
+
+  <div id="stage" data-tool="select">
+    <div id="stageInner"><div id="bookHost"></div></div>
+  </div>
+
+  <div id="pagebar">
+    <div class="pb-group">
+      <button class="icon-btn" id="btnToCover" title="Back to the cover" aria-label="Back to the cover" data-icon="cover"></button>
+      <button class="icon-btn" id="btnFirst" title="First pages" aria-label="First pages" data-icon="first"></button>
+      <button class="icon-btn" id="btnPrev" title="Previous pages" aria-label="Previous pages" data-icon="left"></button>
+    </div>
+    <span id="pageLabel" aria-live="polite"></span>
+    <div class="pb-group">
+      <button class="icon-btn" id="btnNext" title="Next pages" aria-label="Next pages" data-icon="right"></button>
+      <button class="icon-btn" id="btnLast" title="Last pages" aria-label="Last pages" data-icon="last"></button>
+    </div>
+    <span class="tb-sep"></span>
+    <button class="icon-btn" id="btnBookmark" title="Bookmark this page" aria-label="Bookmark this page" data-icon="bookmark"></button>
+    <button class="btn small ghost" id="btnIndexBar" data-icon="index">Index</button>
+    <button class="btn small ghost" id="btnAddPage" data-icon="plus">Page</button>
+  </div>
+
+  <aside id="inspector" aria-label="Properties"></aside>
+
+  <div id="musicDock">
+    <div id="ytWrap"><div id="ytPlayer"></div></div>
+    <button class="icon-btn" id="musicToggle" aria-label="Turn page music on or off"></button>
+    <span id="musicTitle">Page music off</span>
+    <button class="icon-btn" id="musicPlay" aria-label="Play or pause" hidden></button>
+  </div>
+</div>
+
+<div id="modals"></div>
+<div id="toasts" aria-live="polite"></div>
+
+<script src="js/data.js"></script>
+<script src="js/icons.js"></script>
+<script src="js/core.js"></script>
+<script src="js/render.js"></script>
+<script src="js/editor.js"></script>
+<script src="js/inspector.js"></script>
+<script src="js/panels.js"></script>
+<script src="js/theme.js"></script>
+<script src="js/export.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

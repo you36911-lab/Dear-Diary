@@ -1,0 +1,15 @@
+{
+  "name": "Dear Diary",
+  "short_name": "Dear Diary",
+  "description": "A diary you can decorate: paper, photos, washi tape, stickers and notes.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#FFE9F1",
+  "theme_color": "#FFE9F1",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
