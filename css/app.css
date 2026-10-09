@@ -642,3 +642,7 @@ body.flyout-open #pagebar { left: calc(420px + (100% - 420px - 352px) / 2); }
 .tool-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .tbtn span { font-size: 11px; line-height: 1.2; overflow-wrap: anywhere; }
 .ribbon-img { width: 40px; }
+
+/* diary label card: flat, the cover carries the shadow */
+.shelf-meta { box-shadow: none; background: var(--panel-solid); }
+.restore-body { display: flex; flex-direction: column; gap: 16px; }

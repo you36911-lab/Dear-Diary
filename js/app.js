@@ -365,8 +365,17 @@ async function restoreBackup() {
   let data;
   try { data = JSON.parse(await f.text()); if (data.app !== 'dear-days') throw 0; }
   catch (e) { toast("That file isn't a Dear Diary backup."); return; }
-  const n = data.diaries.length;
-  const ok = await confirmBox('Restore backup?', `This adds ${n} diar${n === 1 ? 'y' : 'ies'} from ${new Date(data.exported).toLocaleDateString('en-GB')}. A diary that already exists here is replaced by the backup's version.`, 'Restore', '');
+  const n = data.diaries.length, hasLook = !!(data.meta && (data.meta.theme || data.meta.titleFont));
+  let withLook = hasLook;
+  const ok = await new Promise(res => {
+    let done = false;
+    const body = h('div', { class: 'restore-body' },
+      h('p', {}, `This adds ${n} diar${n === 1 ? 'y' : 'ies'} from ${new Date(data.exported).toLocaleDateString('en-GB')}. A diary that already exists here is replaced by the backup's version.`),
+      hasLook ? toggle('Also restore the colour theme, title font and desk photo', true, v => { withLook = v; }) : null);
+    modal({ title: 'Restore backup?', body, onClose: () => { if (!done) res(false); }, actions: [
+      { label: 'Cancel', run: () => { done = true; res(false); } },
+      { label: 'Restore', kind: 'primary', run: () => { done = true; res(true); } }] });
+  });
   if (!ok) return;
   for (const [id, url] of Object.entries(data.blobs || {})) { const b = await dataURLToBlob(url); await DB.put('blobs', { id, blob: b, type: b.type }); }
   for (const d of data.diaries) await DB.put('diaries', d);
@@ -377,9 +386,17 @@ async function restoreBackup() {
     const tIds = new Set((m.templates || []).map(t => t.id)); m.templates = (m.templates || []).concat((data.meta.templates || []).filter(t => !tIds.has(t.id)));
     const fNames = new Set((m.customFonts || []).map(f => f.name)); m.customFonts = (m.customFonts || []).concat((data.meta.customFonts || []).filter(f => !fNames.has(f.name)));
     m.washiCustom = (m.washiCustom || []).concat((data.meta.washiCustom || []).filter(t => !(m.washiCustom || []).some(x => JSON.stringify(x) === JSON.stringify(t))));
+    if (withLook) {
+      if (data.meta.theme) m.theme = data.meta.theme;
+      if (data.meta.titleFont) m.titleFont = data.meta.titleFont;
+      if (data.meta.musicOn != null) m.musicOn = data.meta.musicOn;
+      if (data.meta.recentColors) m.recentColors = data.meta.recentColors;
+    }
     await saveMeta();
   }
-  await loadAll(); loadCustomFonts(); renderLibrary(); toast('Backup restored');
+  await loadAll(); await loadCustomFonts();
+  if (S.meta.theme && S.meta.theme.deskImage) await loadBlob(S.meta.theme.deskImage);
+  applyTheme(); applyTitleFont(); renderLibrary(); toast(withLook ? 'Backup restored, including your theme' : 'Backup restored');
 }
 
 /* ---------------- Desk ---------------- */
