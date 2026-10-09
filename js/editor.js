@@ -68,30 +68,50 @@ function initEditor() {
   // accept drops anywhere in the editor (not only exactly on the paper), and never let the
   // browser open the dropped file in the tab instead
   const allowedEffect = dt => { const a = (dt && dt.effectAllowed) || 'all'; return /copy|all|uninitialized/i.test(a) ? 'copy' : /link/i.test(a) ? 'link' : 'move'; };
-  // Files dragged in from the computer: a native file input catches them, which browsers
-  // support far more reliably than reading files off a drop event
+  // Everything dragged in from outside (computer files, images from other tabs) lands on a native
+  // file input covering the screen. Edge sometimes hands a page's own drop handler no data at all,
+  // but always fills a file input, so this is the dependable route. Links/HTML fall back to onDrop.
   const fileCatcher = h('input', { type: 'file', multiple: true, accept: 'image/*', id: 'fileCatcher', 'aria-hidden': 'true', tabindex: '-1' });
   document.body.append(fileCatcher);
-  let lastDrag = null;
+  let lastDrag = null, gotFiles = false;
   const hideCatcher = () => { fileCatcher.classList.remove('on'); st.classList.remove('drop-hover'); };
+  const pageAt = pt => pt && document.elementsFromPoint(pt.x, pt.y).map(n => n.closest && n.closest('#book .spread .page[data-page-id]')).find(Boolean);
   fileCatcher.addEventListener('change', () => {
+    gotFiles = true;
     const files = [...fileCatcher.files]; fileCatcher.value = ''; hideCatcher();
     if (!files.length || S.closed) return;
-    const pd = lastDrag && document.elementsFromPoint(lastDrag.x, lastDrag.y).map(n => n.closest && n.closest('#book .spread .page[data-page-id]')).find(Boolean);
-    const page = pd ? findPage(pd.dataset.pageId) : activePageObj();
-    insertImageFiles(files, page, pd ? pagePoint({ clientX: lastDrag.x, clientY: lastDrag.y }, pd) : null);
+    const pd = pageAt(lastDrag);
+    insertImageFiles(files, pd ? findPage(pd.dataset.pageId) : activePageObj(), pd ? pagePoint({ clientX: lastDrag.x, clientY: lastDrag.y }, pd) : null);
   });
-  fileCatcher.addEventListener('dragover', e => { lastDrag = { x: e.clientX, y: e.clientY }; });
+  fileCatcher.addEventListener('dragover', e => { lastDrag = { x: e.clientX, y: e.clientY }; st.classList.add('drop-hover'); });
   fileCatcher.addEventListener('dragleave', e => { if (!e.relatedTarget) hideCatcher(); });
-  fileCatcher.addEventListener('drop', e => { e.stopPropagation(); lastDrag = { x: e.clientX, y: e.clientY }; setTimeout(() => { if (!fileCatcher.files.length) hideCatcher(); }, 400); });
+  // safety: mouse movement means no drag is in progress, so never leave the invisible catcher in the way
+  document.addEventListener('mousemove', () => { if (fileCatcher.classList.contains('on')) hideCatcher(); });
+  fileCatcher.addEventListener('drop', e => {
+    e.stopPropagation();
+    lastDrag = { x: e.clientX, y: e.clientY }; gotFiles = false;
+    const dt = e.dataTransfer, nFiles = dt && dt.files ? dt.files.length : 0;
+    if (nFiles) return; // the input takes them natively and fires "change"
+    // no files: keep a copy of whatever text data came along, then wait to see if the input still received files
+    const snap = { types: [...(dt && dt.types || [])], data: {} };
+    ['text/html', 'text/uri-list', 'text/plain', 'application/x-dd-drawer'].forEach(k => { try { snap.data[k] = dt.getData(k); } catch (err) { snap.data[k] = ''; } });
+    e.preventDefault();
+    const pt = lastDrag;
+    setTimeout(() => {
+      hideCatcher();
+      if (gotFiles) return;
+      const fake = { types: snap.types, files: [], items: [], effectAllowed: dt && dt.effectAllowed, getData: k => snap.data[k] || '' };
+      onDrop({ clientX: pt.x, clientY: pt.y, target: e.target, dataTransfer: fake }).catch(err => reportError('drop', err));
+    }, 350);
+  });
   document.addEventListener('dragenter', e => {
     if (S.view !== 'book' || S.closed) return;
-    e.preventDefault();
     const types = [...(e.dataTransfer && e.dataTransfer.types || [])];
-    if (types.includes('Files') && !types.includes('text/html') && !types.includes('application/x-dd-drawer')) fileCatcher.classList.add('on');
+    if (types.includes('application/x-dd-drawer')) return; // our own drawer items
+    fileCatcher.classList.add('on');
   });
   document.addEventListener('dragover', e => {
-    if (S.view !== 'book') return;
+    if (S.view !== 'book' || e.target === fileCatcher) return;
     e.preventDefault();
     try { e.dataTransfer.dropEffect = allowedEffect(e.dataTransfer); } catch (err) {}
     if (!S.closed) st.classList.add('drop-hover');
