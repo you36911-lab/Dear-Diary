@@ -272,15 +272,17 @@ body.flyout-open #pagebar { left: calc(400px + (100% - 400px - 316px) / 2); }
 #book.closed .cover { transition: transform .95s cubic-bezier(.5,.05,.25,1); }
 #book.opening .book-inner { transform: translateX(0); }
 #book.opening .board-left { opacity: 1; }
-#book.opening .spread .page-left { opacity: 1; transition: opacity .35s .5s; }
-#book.opening .cover { transform: rotateY(-180deg); transition: transform .95s cubic-bezier(.5,.05,.25,1); }
+/* the left page only appears once the cover has fully landed, so nothing can show through the turning cover */
+#book.opening .spread .page-left { opacity: 0; transition: none; }
+#book.opening .cover { transform: perspective(2800px) rotateY(-180deg); transition: transform .95s cubic-bezier(.5,.05,.25,1); }
 #book.opening .cover-edge { display: none; }
-#book.open .cover { visibility: hidden; transform: rotateY(-180deg); pointer-events: none; }
-#book.closing-pre .cover { visibility: visible; transform: rotateY(-180deg); transition: none; }
+#book.open .cover { visibility: hidden; transform: perspective(2800px) rotateY(-180deg); pointer-events: none; }
+#book.closing-pre .cover { visibility: visible; transform: perspective(2800px) rotateY(-180deg); transition: none; }
 #book.closing-pre .cover-edge, #book.closing .cover-edge { display: none; }
-#book.closing .cover { visibility: visible; transform: rotateY(0); transition: transform .95s cubic-bezier(.5,.05,.25,1); }
+#book.closing .cover { visibility: visible; transform: perspective(2800px) rotateY(0deg); transition: transform .95s cubic-bezier(.5,.05,.25,1); }
 #book.closing .book-inner { transform: translateX(-287px); }
-#book.closing .board-left, #book.closing .spread .page-left { opacity: 0; transition: opacity .3s .5s; }
+#book.closing .board-left { opacity: 0; transition: opacity .3s .5s; }
+#book.closing-pre .spread .page-left, #book.closing .spread .page-left { opacity: 0; transition: none; }
 #book.closed .cover-back { visibility: hidden; }
 #book.closed .cover:hover .cover-front { filter: brightness(1.03); }
 
@@ -646,3 +648,8 @@ body.flyout-open #pagebar { left: calc(420px + (100% - 420px - 352px) / 2); }
 /* diary label card: flat, the cover carries the shadow */
 .shelf-meta { box-shadow: none; background: var(--panel-solid); }
 .restore-body { display: flex; flex-direction: column; gap: 16px; }
+
+/* the cover and turning pages carry their own perspective, anchored at the spine,
+   so the spine edge never drifts off the pages while they turn */
+.cover { transform: perspective(2800px) rotateY(0deg); }
+#book.opening .book-inner, #book.closing .book-inner, #book.closing-pre .book-inner, #book.flipping .book-inner { transform-style: flat; }

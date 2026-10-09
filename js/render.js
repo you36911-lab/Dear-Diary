@@ -376,7 +376,7 @@ function flipTo(target) {
   const back = h('div', { class: 'leaf-face leaf-back-face' }, dir > 0 ? renderPage(newL, 'left', { static: true }) : renderPage(newR, 'right', { static: true }), h('div', { class: 'leaf-shade' }));
   leaf.append(front, back);
   $('#book .book-inner').append(leaf);
-  const anim = leaf.animate([{ transform: 'rotateY(0deg)' }, { transform: `rotateY(${dir > 0 ? -180 : 180}deg)` }], { duration: 720, easing: 'cubic-bezier(.45,.05,.35,1)', fill: 'forwards' });
+  const anim = leaf.animate([{ transform: 'perspective(2800px) rotateY(0deg)' }, { transform: `perspective(2800px) rotateY(${dir > 0 ? -180 : 180}deg)` }], { duration: 720, easing: 'cubic-bezier(.45,.05,.35,1)', fill: 'forwards' });
   $$('.leaf-shade', leaf).forEach((sh, i) => sh.animate([{ opacity: i ? .35 : 0 }, { opacity: .25, offset: .5 }, { opacity: i ? 0 : .35 }], { duration: 720, fill: 'forwards' }));
   const done = () => { if (!_flipping) return; _flipping = false; $('#book') && $('#book').classList.remove('flipping'); renderBook(); renderInspector(); };
   anim.finished.then(done, done); setTimeout(done, 1400);
