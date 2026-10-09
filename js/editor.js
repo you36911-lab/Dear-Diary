@@ -65,9 +65,22 @@ function initEditor() {
   document.addEventListener('keydown', onKey);
   document.addEventListener('paste', onPaste);
   const st = $('#stage');
-  st.addEventListener('dragover', e => { if (S.closed) return; e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; st.classList.add('drop-hover'); });
-  st.addEventListener('dragleave', e => { if (e.target === st) st.classList.remove('drop-hover'); });
-  st.addEventListener('drop', onDrop);
+  // accept drops anywhere in the editor (not only exactly on the paper), and never let the
+  // browser open the dropped file in the tab instead
+  const allowedEffect = dt => { const a = (dt && dt.effectAllowed) || 'all'; return /copy|all|uninitialized/i.test(a) ? 'copy' : /link/i.test(a) ? 'link' : 'move'; };
+  document.addEventListener('dragover', e => {
+    if (S.view !== 'book') return;
+    e.preventDefault();
+    try { e.dataTransfer.dropEffect = allowedEffect(e.dataTransfer); } catch (err) {}
+    if (!S.closed) st.classList.add('drop-hover');
+  });
+  document.addEventListener('dragleave', e => { if (!e.relatedTarget) st.classList.remove('drop-hover'); });
+  document.addEventListener('drop', e => {
+    if (S.view !== 'book') return;
+    e.preventDefault(); st.classList.remove('drop-hover');
+    if (e.target.closest && e.target.closest('#flyout, #inspector, #modals')) return; // panels handle their own drops
+    onDrop(e).catch(err => reportError('drop', err));
+  });
   // while the window is being resized (or leaves full screen), switch off panel slide animations
   // so panels jump straight to their new place instead of sweeping across the screen
   let _rzT = null;
@@ -517,9 +530,8 @@ async function fetchImageURL(url) {
   return b;
 }
 async function onDrop(ev) {
-  ev.preventDefault(); $('#stage').classList.remove('drop-hover');
-  if (S.closed) return;
-  const pageDiv = document.elementsFromPoint(ev.clientX, ev.clientY).map(n => n.closest && n.closest('.page[data-page-id]')).find(Boolean);
+  if (S.closed) { toast('Open the diary first, then drop the image on a page.'); return; }
+  const pageDiv = document.elementsFromPoint(ev.clientX, ev.clientY).map(n => n.closest && n.closest('#book .spread .page[data-page-id]')).find(Boolean);
   const page = pageDiv ? findPage(pageDiv.dataset.pageId) : activePageObj();
   const at = pageDiv ? pagePoint(ev, pageDiv) : null;
   const dt = ev.dataTransfer;
@@ -528,13 +540,26 @@ async function onDrop(ev) {
   const tapeIdx = dt.getData('application/x-dd-washi');
   if (tapeIdx) return;
   if (dt.files && dt.files.length) return insertImageFiles([...dt.files], page, at);
+  if (dt.items && dt.items.length) {
+    const fs = [...dt.items].filter(i => i.kind === 'file').map(i => i.getAsFile()).filter(Boolean);
+    if (fs.length) return insertImageFiles(fs, page, at);
+  }
   let url = '';
   const html = dt.getData('text/html');
-  if (html) { const m = html.match(/<img[^>]+src="([^"]+)"/i); if (m) url = m[1].replace(/&amp;/g, '&'); }
-  if (!url) url = (dt.getData('text/uri-list') || dt.getData('text/plain') || '').split('\n')[0].trim();
-  if (!url) return;
+  if (html) {
+    const doc = new DOMParser().parseFromString(html, 'text/html'), img = doc.querySelector('img');
+    if (img) {
+      const set = (img.getAttribute('srcset') || '').split(',').map(s => s.trim().split(/\s+/)).filter(x => x[0]);
+      const best = set.sort((a, b) => parseFloat(b[1] || 0) - parseFloat(a[1] || 0))[0];
+      url = (best && best[0]) || img.getAttribute('src') || '';
+    }
+  }
+  if (!url) url = (dt.getData('text/uri-list') || dt.getData('text/plain') || '').split('\n').map(s => s.trim()).find(s => s && !s.startsWith('#')) || '';
+  if (url.startsWith('//')) url = 'https:' + url;
+  if (!url) { toast(`Nothing to add from that drop (received: ${[...(dt.types || [])].join(', ') || 'nothing'}).`, 6000); return; }
   if (url.startsWith('data:image')) return insertImageBlob(await dataURLToBlob(url), page, at);
-  if (!/^https?:/.test(url)) return;
+  if (url.startsWith('blob:')) { try { return insertImageBlob(await (await fetch(url)).blob(), page, at); } catch (e) { /* fall through to the message */ } }
+  if (!/^https?:/.test(url)) { toast("That image can't be read from where it was dragged. Copy it (right-click → Copy image) and press Ctrl + V instead.", 6000); return; }
   // Pinterest serves thumbnails; try the larger original first
   const tries = [url.replace(/\/(236x|474x|564x|736x)\//, '/originals/'), url.replace(/\/(236x|474x)\//, '/736x/'), url].filter((u, i, a) => a.indexOf(u) === i);
   for (const u of tries) {
