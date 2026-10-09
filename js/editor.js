@@ -68,6 +68,28 @@ function initEditor() {
   // accept drops anywhere in the editor (not only exactly on the paper), and never let the
   // browser open the dropped file in the tab instead
   const allowedEffect = dt => { const a = (dt && dt.effectAllowed) || 'all'; return /copy|all|uninitialized/i.test(a) ? 'copy' : /link/i.test(a) ? 'link' : 'move'; };
+  // Files dragged in from the computer: a native file input catches them, which browsers
+  // support far more reliably than reading files off a drop event
+  const fileCatcher = h('input', { type: 'file', multiple: true, accept: 'image/*', id: 'fileCatcher', 'aria-hidden': 'true', tabindex: '-1' });
+  document.body.append(fileCatcher);
+  let lastDrag = null;
+  const hideCatcher = () => { fileCatcher.classList.remove('on'); st.classList.remove('drop-hover'); };
+  fileCatcher.addEventListener('change', () => {
+    const files = [...fileCatcher.files]; fileCatcher.value = ''; hideCatcher();
+    if (!files.length || S.closed) return;
+    const pd = lastDrag && document.elementsFromPoint(lastDrag.x, lastDrag.y).map(n => n.closest && n.closest('#book .spread .page[data-page-id]')).find(Boolean);
+    const page = pd ? findPage(pd.dataset.pageId) : activePageObj();
+    insertImageFiles(files, page, pd ? pagePoint({ clientX: lastDrag.x, clientY: lastDrag.y }, pd) : null);
+  });
+  fileCatcher.addEventListener('dragover', e => { lastDrag = { x: e.clientX, y: e.clientY }; });
+  fileCatcher.addEventListener('dragleave', e => { if (!e.relatedTarget) hideCatcher(); });
+  fileCatcher.addEventListener('drop', e => { e.stopPropagation(); lastDrag = { x: e.clientX, y: e.clientY }; setTimeout(() => { if (!fileCatcher.files.length) hideCatcher(); }, 400); });
+  document.addEventListener('dragenter', e => {
+    if (S.view !== 'book' || S.closed) return;
+    e.preventDefault();
+    const types = [...(e.dataTransfer && e.dataTransfer.types || [])];
+    if (types.includes('Files') && !types.includes('text/html') && !types.includes('application/x-dd-drawer')) fileCatcher.classList.add('on');
+  });
   document.addEventListener('dragover', e => {
     if (S.view !== 'book') return;
     e.preventDefault();
@@ -529,6 +551,16 @@ async function fetchImageURL(url) {
   if (!b.type.startsWith('image/')) throw new Error('not image');
   return b;
 }
+function dropReport(ev, dt) {
+  const items = [...(dt.items || [])].map(i => `${i.kind}:${i.type || '?'}`).join(', ') || 'none';
+  const info = [`types: ${[...(dt.types || [])].join(', ') || 'none'}`, `files: ${dt.files ? dt.files.length : 'n/a'}`, `items: ${items}`, `effectAllowed: ${dt.effectAllowed}`, `target: ${ev.target && (ev.target.id || ev.target.className || ev.target.tagName)}`, `browser: ${navigator.userAgent}`].join('\n');
+  ErrLog.push('drop: ' + info.replace(/\n/g, ' | '));
+  const pre = h('pre', { class: 'diag' }, info);
+  modal({ title: "That drop didn't bring an image", body: h('div', { class: 'prose' },
+    h('p', {}, 'The browser handed over no picture data. Uploading or pasting (right-click → Copy image, then Ctrl + V) works meanwhile.'),
+    h('p', { class: 'muted small' }, 'If you send these details to whoever maintains the app, they can see exactly what arrived:'), pre),
+    actions: [{ label: 'Copy details', keep: true, run: () => { navigator.clipboard && navigator.clipboard.writeText(info); toast('Copied'); return false; } }, { label: 'Close', kind: 'primary' }] });
+}
 async function onDrop(ev) {
   if (S.closed) { toast('Open the diary first, then drop the image on a page.'); return; }
   const pageDiv = document.elementsFromPoint(ev.clientX, ev.clientY).map(n => n.closest && n.closest('#book .spread .page[data-page-id]')).find(Boolean);
@@ -556,7 +588,7 @@ async function onDrop(ev) {
   }
   if (!url) url = (dt.getData('text/uri-list') || dt.getData('text/plain') || '').split('\n').map(s => s.trim()).find(s => s && !s.startsWith('#')) || '';
   if (url.startsWith('//')) url = 'https:' + url;
-  if (!url) { toast(`Nothing to add from that drop (received: ${[...(dt.types || [])].join(', ') || 'nothing'}).`, 6000); return; }
+  if (!url) { dropReport(ev, dt); return; }
   if (url.startsWith('data:image')) return insertImageBlob(await dataURLToBlob(url), page, at);
   if (url.startsWith('blob:')) { try { return insertImageBlob(await (await fetch(url)).blob(), page, at); } catch (e) { /* fall through to the message */ } }
   if (!/^https?:/.test(url)) { toast("That image can't be read from where it was dragged. Copy it (right-click → Copy image) and press Ctrl + V instead.", 6000); return; }
