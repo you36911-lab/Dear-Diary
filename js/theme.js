@@ -36,9 +36,12 @@ function themeColors(t) {
 function applyTheme() {
   const t = Object.assign({}, DEFAULT_THEME, S.meta.theme || {});
   const c = themeColors(t), r = document.documentElement.style, [pr, pg, pb] = _rgb(c.panel);
+  // scrollbars wear the theme background; nudged darker only as far as needed to stay visible
+  let scr = c.bg; for (let i = 0; i < 10 && contrastHex(scr, c.panel) < 1.35; i++) scr = mixHex(scr, c.ink, .1);
+  let scrDesk = c.bg; for (let i = 0; i < 10 && contrastHex(scrDesk, c.bg) < 1.5; i++) scrDesk = mixHex(scrDesk, lumHex(c.bg) > .3 ? c.ink : '#FFFFFF', .12);
   const vars = { '--bg': c.bg, '--accent': c.ac, '--on-accent': c.onAc, '--accent-ink': c.ai, '--accent-ui': c.aui, '--accent-soft': c.soft, '--soft-2': c.soft2,
     '--ink': c.ink, '--ink-2': c.ink2, '--ink-3': c.ink3, '--line': c.line, '--line-strong': c.lineStrong, '--hover': c.hover,
-    '--panel-solid': c.panel, '--panel': `rgba(${pr},${pg},${pb},.96)`, '--desk-ink': c.deskInk, '--title-shadow': contrastHex(c.ac, c.bg) < 2 ? (lumHex(c.ac) > lumHex(c.bg) ? '0 1px 2px rgba(0,0,0,.28)' : '0 1px 1px rgba(255,255,255,.6)') : 'none', '--title-on-desk': c.titleOnDesk, '--sel': c.sel };
+    '--panel-solid': c.panel, '--panel': `rgba(${pr},${pg},${pb},.96)`, '--desk-ink': c.deskInk, '--title-shadow': contrastHex(c.ac, c.bg) < 2 ? (lumHex(c.ac) > lumHex(c.bg) ? '0 1px 2px rgba(0,0,0,.28)' : '0 1px 1px rgba(255,255,255,.6)') : 'none', '--title-on-desk': c.titleOnDesk, '--sel': c.sel, '--scroll': scr, '--scroll-hover': mixHex(scr, c.ink, .2), '--scroll-desk': scrDesk };
   Object.entries(vars).forEach(([k, v]) => r.setProperty(k, v));
   try { localStorage.setItem('dd-theme-vars', JSON.stringify(vars)); } catch (e) {}
   const b = document.body;
