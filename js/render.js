@@ -285,6 +285,9 @@ function renderBook() {
     h('div', { class: 'cover-front' }, renderCoverFace(d.cover), h('div', { class: 'cover-edge' })),
     h('div', { class: 'cover-back' }, h('div', { class: 'cover-lining' })));
   applyCoverBg(cover.querySelector('.cover-lining'), d.cover);
+  // the inside of the turning cover shows the real left page, so it lands seamlessly
+  const firstLeft = vp[S.spread * 2];
+  if (firstLeft) { const lin = cover.querySelector('.cover-lining'); lin.classList.add('has-page'); lin.append(renderPage(firstLeft, 'left', { static: true })); }
   cover.addEventListener('click', () => { if (S.closed) openBook(); });
   cover.addEventListener('keydown', e => { if (S.closed && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); openBook(); } });
   inner.append(cover);

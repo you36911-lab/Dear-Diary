@@ -178,7 +178,7 @@ h3.sub { margin-top: 14px; }
 .board::after { content: ""; position: absolute; inset: 0; border-radius: inherit; background: rgba(20, 10, 30, .08); }
 .page-stack { display: none; }
 .spread { position: absolute; left: 14px; top: 14px; width: 1120px; height: 834px; display: flex; }
-.page { position: relative; width: 560px; height: 834px; overflow: hidden; flex-shrink: 0; touch-action: none; }
+.page { position: relative; width: 560px; height: 834px; overflow: visible; flex-shrink: 0; touch-action: none; }
 .page-left { border-radius: 4px 0 0 4px; box-shadow: -1px 1px 0 #EFEBE3, -2px 2px 0 #FAF8F3, -3px 3px 0 #E5E0D6, -4px 4px 0 #F6F3EC, -5px 5px 0 #DCD6CB; }
 .page-right { border-radius: 0 4px 4px 0; box-shadow: 1px 1px 0 #EFEBE3, 2px 2px 0 #FAF8F3, 3px 3px 0 #E5E0D6, 4px 4px 0 #F6F3EC, 5px 5px 0 #DCD6CB; }
 .page.static { pointer-events: none; }
@@ -195,7 +195,7 @@ h3.sub { margin-top: 14px; }
 .page-left .ribbon { left: auto; right: 46px; }
 .page-end { background: #F6F3EE; display: grid; place-items: center; }
 .page-end .add-page-btn { position: relative; z-index: 3; }
-.els { position: absolute; inset: 0; }
+.els { position: absolute; inset: 0; overflow: hidden; border-radius: inherit; }
 .live-stroke { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
 .sel-layer { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
 
@@ -653,3 +653,9 @@ body.flyout-open #pagebar { left: calc(420px + (100% - 420px - 352px) / 2); }
    so the spine edge never drifts off the pages while they turn */
 .cover { transform: perspective(2800px) rotateY(0deg); }
 #book.opening .book-inner, #book.closing .book-inner, #book.closing-pre .book-inner, #book.flipping .book-inner { transform-style: flat; }
+
+/* selection handles may reach past the paper edge; page items stay clipped inside .els */
+.page-cal, .page-end { overflow: hidden; }
+.leaf-face .page, .export-host .page { overflow: hidden; }
+.cover-lining.has-page::after { display: none; }
+.cover-lining .page { position: absolute; left: 14px; top: 14px; }
