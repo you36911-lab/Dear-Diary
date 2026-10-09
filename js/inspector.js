@@ -123,6 +123,7 @@ function pagePanel() {
     toggle('Bookmark ribbon', page.bookmarked, v => { set(p => p.bookmarked = v, v ? 'Bookmark' : 'Remove bookmark'); updateNav(); renderInspector(); }),
     page.bookmarked ? ribbonPicker(page.ribbon || S.diary.settings.ribbon || 'babypink', c => { set(p => p.ribbon = c, 'Ribbon colour'); S.diary.settings.ribbon = c; renderInspector(); }) : null,
     toggle('Show the date', page.showDate !== false, v => set(p => p.showDate = v, v ? 'Show date' : 'Hide date')),
+    toggle('Show page numbers', S.diary.settings.showPageNumbers !== false, v => { S.diary.settings.showPageNumbers = v; commit(v ? 'Show page numbers' : 'Hide page numbers'); renderBook(); renderInspector(); }),
     h('div', { class: 'mini-actions' }, 'Every page:',
       h('button', { class: 'link small', onclick: () => { S.diary.pages.forEach(p => p.showDate = false); S.diary.settings.showDates = false; commit('Hide all dates'); renderBook(); renderInspector(); toast('Dates are hidden on every page, including new ones.'); } }, 'Hide dates'),
       h('button', { class: 'link small', onclick: () => { S.diary.pages.forEach(p => p.showDate = true); S.diary.settings.showDates = true; commit('Show all dates'); renderBook(); renderInspector(); toast('Dates are shown on every page.'); } }, 'Show dates'))));

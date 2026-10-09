@@ -469,12 +469,25 @@ async function normalizeImage(blob, max = 2200) {
 }
 async function insertImageBlob(blob, page, at, style = {}) {
   if (!page) { toast('Open the diary to a page first.'); return; }
-  const n = await normalizeImage(blob);
-  const id = await putBlob(n.blob);
+  let step = 'reading the image';
+  const watch = setTimeout(() => toast(`Adding the photo is taking long (stuck at: ${step}). Try reloading the page.`, 7000), 8000);
+  try {
+    const n = await normalizeImage(blob);
+    step = 'saving the image';
+    const id = await putBlob(n.blob);
+    step = 'placing it on the page';
+    return placeImage(n, id, page, at, style);
+  } finally { clearTimeout(watch); }
+}
+function placeImage(n, id, page, at, style) {
   const maxW = style.w || 240, w = Math.min(maxW, n.w), hh = Math.round(w * n.h / n.w);
   const p = at || { x: PW / 2, y: PH / 2 };
   const el = baseEl('image', Object.assign({ blobId: id, nw: n.w, nh: n.h, x: Math.round(p.x - w / 2), y: Math.round(p.y - hh / 2), w, h: hh, shape: 'none', crop: { x: 0, y: 0, w: 1, h: 1 }, border: { width: 0, color: '#FFFFFF' }, shadow: true, filter: 'none', flipX: false, flipY: false, polaroid: false, caption: '' }, style, { w, h: style.h ? Math.round(w * style.h / style.w) : hh }));
   addEl(page, el, 'Add image');
+  if (!$(`#book .spread .el[data-id="${el.id}"]`)) {
+    const n2 = pageNumber(page);
+    toast(n2 > 0 ? `The photo was added to page ${n2}.` : 'The photo was added.', 4000);
+  }
   return el;
 }
 function imageErrorText(e, f) {
@@ -487,7 +500,7 @@ async function insertImageFiles(files, page, at) {
   for (const f of files) {
     if (!(f.type || '').startsWith('image/') && !/\.(jpe?g|png|gif|webp|avif|bmp|svg)$/i.test(f.name || '')) { toast(`“${f.name}” isn't an image file.`); continue; }
     try { await insertImageBlob(f, page, at && { x: at.x + i * 24, y: at.y + i * 24 }); i++; }
-    catch (e) { console.error(e); toast(imageErrorText(e, f), 5000); }
+    catch (e) { console.error(e); ErrLog.push('insert: ' + (e && e.message)); toast(imageErrorText(e, f), 6000); }
   }
 }
 function pickImages() {

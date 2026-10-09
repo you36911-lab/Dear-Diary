@@ -178,7 +178,7 @@ function renderPage(page, side, opts = {}) {
   page.elements.forEach(e => els.append(renderEl(e, opts)));
   wrap.append(els);
   wrap.append(h('div', { class: 'page-shade' }));
-  wrap.append(h('div', { class: 'page-num' }, String(pageNumber(page))));
+  if (S.diary.settings.showPageNumbers !== false) wrap.append(h('div', { class: 'page-num' }, String(pageNumber(page))));
   if (page.bookmarked) wrap.append(h('img', { class: 'ribbon-img', src: ribbonUrl(page.ribbon || S.diary.settings.ribbon), alt: '', draggable: 'false' }));
   if (page.music && page.music.id && S.diary.settings.showMusicTag !== false) wrap.append(h('div', { class: 'page-music-tag', title: 'This page has a song' , html: ICON.music }));
   if (!opts.static) wrap.append(h('div', { class: 'sel-layer' }));
@@ -310,6 +310,7 @@ function fitStage() {
   S.scale = sc;
   scaler.style.width = BW * sc + 'px'; scaler.style.height = BH * sc + 'px';
   if (CSS.supports('zoom', '1')) { book.style.zoom = sc; book.style.transform = ''; } else book.style.transform = `scale(${sc})`;
+  stage.style.overflow = S.zoom > 1 ? 'auto' : 'hidden';
   const z = $('#zoomLabel'); if (z) z.textContent = Math.round(S.zoom * 100) + '%';
 }
 

@@ -35,11 +35,19 @@ const DB = {
         d.createObjectStore('drawer', { keyPath: 'id' });
         d.createObjectStore('meta', { keyPath: 'key' });
       };
-      r.onsuccess = () => { this.db = r.result; res(); };
+      r.onsuccess = () => { this.db = r.result; this.db.onclose = () => { this.db = null; }; this.db.onversionchange = () => { try { this.db.close(); } catch (e) {} this.db = null; }; res(); };
       r.onerror = () => rej(r.error);
     });
   },
-  tx(store, mode, fn) {
+  async tx(store, mode, fn, retry = true) {
+    if (!this.db) await this.open();
+    try { return await this._tx(store, mode, fn); }
+    catch (e) {
+      if (retry && e && (e.name === 'InvalidStateError' || /closing|closed/i.test(e.message || ''))) { this.db = null; await this.open(); return this._tx(store, mode, fn); }
+      throw e;
+    }
+  },
+  _tx(store, mode, fn) {
     return new Promise((res, rej) => {
       const t = this.db.transaction(store, mode), s = t.objectStore(store);
       let out; const r = fn(s);
@@ -197,6 +205,17 @@ function updateUndoUI() {
   u.disabled = H.idx <= 0; r.disabled = H.idx >= H.stack.length - 1;
   if (typeof _flyout !== 'undefined' && (_flyout === 'history' || _flyout === 'index')) renderFlyout();
 }
+
+/* ---------------- Error reporting ---------------- */
+const ErrLog = [];
+function reportError(where, e) {
+  const msg = (e && (e.message || e.name)) || String(e);
+  ErrLog.push(`${new Date().toLocaleTimeString()} · ${where}: ${msg}`); if (ErrLog.length > 30) ErrLog.shift();
+  console.error(where, e);
+  if (typeof toast === 'function') toast(`Something went wrong (${where}): ${msg}`, 6000);
+}
+window.addEventListener('error', ev => { if (ev.message && !/ResizeObserver|Script error/i.test(ev.message)) reportError('app', ev.error || ev.message); });
+window.addEventListener('unhandledrejection', ev => reportError('app', ev.reason));
 
 /* ---------------- Toast / dialogs ---------------- */
 function toast(msg, ms = 2600) {
