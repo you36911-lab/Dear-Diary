@@ -68,7 +68,14 @@ function initEditor() {
   st.addEventListener('dragover', e => { if (S.closed) return; e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; st.classList.add('drop-hover'); });
   st.addEventListener('dragleave', e => { if (e.target === st) st.classList.remove('drop-hover'); });
   st.addEventListener('drop', onDrop);
-  window.addEventListener('resize', () => { if (S.view === 'book') { fitStage(); refreshSelection(); } });
+  // while the window is being resized (or leaves full screen), switch off panel slide animations
+  // so panels jump straight to their new place instead of sweeping across the screen
+  let _rzT = null;
+  window.addEventListener('resize', () => {
+    document.documentElement.classList.add('resizing');
+    clearTimeout(_rzT); _rzT = setTimeout(() => document.documentElement.classList.remove('resizing'), 250);
+    if (S.view === 'book') { fitStage(); refreshSelection(); }
+  });
 }
 
 function onPointerDown(ev) {
@@ -478,14 +485,15 @@ function imageErrorText(e, f) {
 async function insertImageFiles(files, page, at) {
   let i = 0;
   for (const f of files) {
-    if (!f.type.startsWith('image/')) continue;
+    if (!(f.type || '').startsWith('image/') && !/\.(jpe?g|png|gif|webp|avif|bmp|svg)$/i.test(f.name || '')) { toast(`“${f.name}” isn't an image file.`); continue; }
     try { await insertImageBlob(f, page, at && { x: at.x + i * 24, y: at.y + i * 24 }); i++; }
     catch (e) { console.error(e); toast(imageErrorText(e, f), 5000); }
   }
 }
 function pickImages() {
-  const inp = h('input', { type: 'file', accept: 'image/*', multiple: true });
-  inp.onchange = () => insertImageFiles([...inp.files], activePageObj());
+  const inp = h('input', { type: 'file', accept: 'image/*', multiple: true, style: { position: 'fixed', left: '-9999px' } });
+  document.body.append(inp);
+  inp.onchange = () => { const files = [...inp.files]; inp.remove(); if (!files.length) return; const page = activePageObj(); if (!page) { toast('Open the diary to a page first.'); return; } insertImageFiles(files, page); };
   inp.click();
 }
 async function fetchImageURL(url) {

@@ -377,7 +377,7 @@ async function restoreBackup() {
       { label: 'Restore', kind: 'primary', run: () => { done = true; res(true); } }] });
   });
   if (!ok) return;
-  for (const [id, url] of Object.entries(data.blobs || {})) { const b = await dataURLToBlob(url); await DB.put('blobs', { id, blob: b, type: b.type }); }
+  for (const [id, url] of Object.entries(data.blobs || {})) { const b = await dataURLToBlob(url); await storeBlobRecord(id, b); }
   for (const d of data.diaries) await DB.put('diaries', d);
   for (const it of data.drawer || []) await DB.put('drawer', it);
   if (data.meta) {

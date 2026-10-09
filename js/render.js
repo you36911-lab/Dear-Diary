@@ -287,7 +287,7 @@ function renderBook() {
   applyCoverBg(cover.querySelector('.cover-lining'), d.cover);
   // the inside of the turning cover shows the real left page, so it lands seamlessly
   const firstLeft = vp[S.spread * 2];
-  if (firstLeft) { const lin = cover.querySelector('.cover-lining'); lin.classList.add('has-page'); lin.append(renderPage(firstLeft, 'left', { static: true })); }
+  if (firstLeft && S.closed) { const lin = cover.querySelector('.cover-lining'); lin.classList.add('has-page'); lin.append(renderPage(firstLeft, 'left', { static: true })); }
   cover.addEventListener('click', () => { if (S.closed) openBook(); });
   cover.addEventListener('keydown', e => { if (S.closed && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); openBook(); } });
   inner.append(cover);
@@ -352,6 +352,8 @@ function closeBook() {
   const book = $('#book'); if (!book) return;
   _flipping = true;
   if (reducedMotion()) { S.closed = true; _flipping = false; renderBook(); renderInspector(); return; }
+  const lin = book.querySelector('.cover-lining'), firstLeft = virtualPages()[S.spread * 2];
+  if (lin && firstLeft && !lin.classList.contains('has-page')) { lin.classList.add('has-page'); lin.append(renderPage(firstLeft, 'left', { static: true })); }
   book.classList.remove('open'); book.classList.add('closing-pre');
   void book.offsetWidth;
   book.classList.remove('closing-pre'); book.classList.add('closing');
@@ -359,9 +361,11 @@ function closeBook() {
 }
 
 /* ---------------- Page flip ---------------- */
+let _flipToken = 0, _queuedFlip = null;
 function flipTo(target) {
   const vp = virtualPages(), max = Math.max(0, Math.ceil(vp.length / 2) - 1);
   target = clamp(target, 0, max);
+  if (_flipping && !S.closed) { _queuedFlip = target; return; } // remember a click made mid-turn
   if (S.closed || _flipping || target === S.spread) return;
   if (S.editing) finishEditing();
   const dir = target > S.spread ? 1 : -1, s = S.spread;
@@ -381,10 +385,15 @@ function flipTo(target) {
   $('#book .book-inner').append(leaf);
   const anim = leaf.animate([{ transform: 'perspective(2800px) rotateY(0deg)' }, { transform: `perspective(2800px) rotateY(${dir > 0 ? -180 : 180}deg)` }], { duration: 720, easing: 'cubic-bezier(.45,.05,.35,1)', fill: 'forwards' });
   $$('.leaf-shade', leaf).forEach((sh, i) => sh.animate([{ opacity: i ? .35 : 0 }, { opacity: .25, offset: .5 }, { opacity: i ? 0 : .35 }], { duration: 720, fill: 'forwards' }));
-  const done = () => { if (!_flipping) return; _flipping = false; $('#book') && $('#book').classList.remove('flipping'); renderBook(); renderInspector(); };
+  const tok = ++_flipToken;
+  const done = () => {
+    if (tok !== _flipToken || !_flipping) return;
+    _flipping = false; $('#book') && $('#book').classList.remove('flipping'); renderBook(); renderInspector();
+    if (_queuedFlip != null) { const t = _queuedFlip; _queuedFlip = null; if (t !== S.spread) setTimeout(() => flipTo(t), 0); }
+  };
   anim.finished.then(done, done); setTimeout(done, 1400);
 }
-const flip = dir => { if (S.closed) { if (dir > 0) openBook(); return; } if (dir < 0 && S.spread <= 0) return closeBook(); flipTo(S.spread + dir); };
+const flip = dir => { if (S.closed) { if (dir > 0) openBook(); return; } if (_flipping) { flipTo((_queuedFlip != null ? _queuedFlip : S.spread) + dir); return; } if (dir < 0 && S.spread <= 0) return closeBook(); flipTo(S.spread + dir); };
 function goToPage(id) {
   const vp = virtualPages(), i = vp.findIndex(p => p.id === id);
   if (i < 0) return;

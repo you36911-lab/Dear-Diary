@@ -57,9 +57,14 @@ const DB = {
 /* ---------------- Blobs (images) ---------------- */
 const BlobCache = new Map(); // id -> objectURL
 const _blobLoading = new Map();
+async function storeBlobRecord(id, blob) {
+  const buf = await blob.arrayBuffer();
+  await DB.put('blobs', { id, buf, type: blob.type || 'application/octet-stream' });
+}
+const recordToBlob = r => !r ? null : r.buf ? new Blob([r.buf], { type: r.type }) : r.blob || null;
 async function putBlob(blob) {
   const id = 'b' + uid();
-  try { await DB.put('blobs', { id, blob, type: blob.type }); }
+  try { await storeBlobRecord(id, blob); }
   catch (e) { const err = new Error(e && e.name === 'QuotaExceededError' ? 'quota' : (e && e.message) || 'storage error'); err.name = e && e.name; throw err; }
   BlobCache.set(id, URL.createObjectURL(blob));
   return id;
@@ -68,8 +73,8 @@ function loadBlob(id) {
   if (!id) return Promise.resolve('');
   if (BlobCache.has(id)) return Promise.resolve(BlobCache.get(id));
   if (_blobLoading.has(id)) return _blobLoading.get(id);
-  const p = DB.get('blobs', id).then(r => { const u = r ? URL.createObjectURL(r.blob) : ''; BlobCache.set(id, u); _blobLoading.delete(id); return u; });
-  _blobLoading.set(id, p); return p;
+  const p = DB.get('blobs', id).then(r => { const b = recordToBlob(r); const u = b ? URL.createObjectURL(b) : ''; BlobCache.set(id, u); _blobLoading.delete(id); return u; });
+  p.catch(() => { _blobLoading.delete(id); }); _blobLoading.set(id, p); return p;
 }
 function blobURL(id) {
   if (!id) return '';
@@ -77,7 +82,7 @@ function blobURL(id) {
   loadBlob(id).then(() => { if (typeof scheduleRender === 'function') scheduleRender(); });
   return '';
 }
-async function getBlob(id) { const r = await DB.get('blobs', id); return r && r.blob; }
+async function getBlob(id) { return recordToBlob(await DB.get('blobs', id)); }
 function collectBlobIds(obj, out = new Set()) {
   if (!obj || typeof obj !== 'object') return out;
   if (Array.isArray(obj)) { obj.forEach(o => collectBlobIds(o, out)); return out; }

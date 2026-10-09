@@ -660,3 +660,10 @@ body.flyout-open #pagebar { left: calc(420px + (100% - 420px - 352px) / 2); }
 .leaf-face .page, .export-host .page { overflow: hidden; }
 .cover-lining.has-page::after { display: none; }
 .cover-lining .page { position: absolute; left: 14px; top: 14px; }
+
+/* smoother turns: the turning leaf is rasterised once and rotated on the GPU */
+.leaf { will-change: transform; }
+.leaf-face { contain: strict; }
+.cover { will-change: transform; }
+
+html.resizing *, html.resizing *::before, html.resizing *::after { transition: none !important; }
