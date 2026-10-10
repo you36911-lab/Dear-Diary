@@ -67,14 +67,18 @@ const BlobCache = new Map(); // id -> objectURL
 const _blobLoading = new Map();
 async function storeBlobRecord(id, blob) {
   const buf = await blob.arrayBuffer();
-  await DB.put('blobs', { id, buf, type: blob.type || 'application/octet-stream' });
+  const type = blob.type || 'application/octet-stream';
+  await DB.put('blobs', { id, buf, type });
+  return new Blob([buf], { type }); // an in-memory copy, independent of the original file on disk
 }
 const recordToBlob = r => !r ? null : r.buf ? new Blob([r.buf], { type: r.type }) : r.blob || null;
 async function putBlob(blob) {
   const id = 'b' + uid();
-  try { await storeBlobRecord(id, blob); }
+  let copy;
+  try { copy = await storeBlobRecord(id, blob); }
   catch (e) { const err = new Error(e && e.name === 'QuotaExceededError' ? 'quota' : (e && e.message) || 'storage error'); err.name = e && e.name; throw err; }
-  BlobCache.set(id, URL.createObjectURL(blob));
+  // show the saved copy, never the dropped/picked file itself (that link breaks if the file is moved or deleted)
+  BlobCache.set(id, URL.createObjectURL(copy));
   return id;
 }
 function loadBlob(id) {
